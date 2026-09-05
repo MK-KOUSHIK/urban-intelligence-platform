@@ -9,6 +9,7 @@ import app.models.alerts
 import app.models.users
 import app.models.registry
 import app.models.recordings
+from app.models.users import User
 from app.auth.security import get_password_hash
 from app.config import CORS_ORIGINS
 
@@ -34,9 +35,9 @@ def startup_event():
         {"username": "municipal", "password": "municipalpassword", "role": "municipal_authority"}
     ]
     for user_data in demo_users:
-        user = db.query(app.models.users.User).filter(app.models.users.User.username == user_data["username"]).first()
+        user = db.query(User).filter(User.username == user_data["username"]).first()
         if not user:
-            new_user = app.models.users.User(
+            new_user = User(
                 username=user_data["username"],
                 password_hash=get_password_hash(user_data["password"]),
                 role=user_data["role"]
