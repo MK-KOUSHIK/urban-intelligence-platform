@@ -1,25 +1,41 @@
-# Frontend API Contract
+# Frontend API Contract & Integration Guide
 
-This document describes the REST and WebSocket APIs provided by the Urban Intelligence Platform backend for the React/Vite + Leaflet frontend.
+This document is the definitive single source of truth for Member 1 developing the React/Vite + Leaflet frontend for the **Urban Intelligence Platform**.
 
-## Base URL
-All API requests should be prefixed with `/api` unless otherwise specified.
-Example: `http://localhost:8000/api`
+---
 
-## Authentication
+## 1. Environment & Base URL Configuration
 
-The backend uses JWT Bearer tokens for authentication.
+### Frontend Environment Variables (`.env`)
+Create a `.env` file in the root of the React project:
 
-**Header:**
-`Authorization: Bearer <accessToken>`
+```env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_WS_URL=ws://localhost:8000/ws/events
+```
 
-**Errors:**
-- `401 Unauthorized`: No token provided, invalid token, or expired token.
-- `403 Forbidden`: Authenticated, but lacking the necessary role.
+### Backend CORS Configuration
+The backend accepts requests from origins configured in `CORS_ORIGINS` (default: `http://localhost:5173,http://localhost:3000`).
 
-### Login
-- **Method:** POST
-- **Path:** `/api/auth/login`
+---
+
+## 2. Authentication & User Roles
+
+The backend uses JWT Bearer tokens for human dashboard users.
+
+- **Header:** `Authorization: Bearer <accessToken>`
+- **Token Expiry:** 24 hours (1440 minutes)
+
+### User Roles
+- `admin`: Full read and write access across all resources (incidents, alerts, recordings, fleet registry, device API key generation).
+- `traffic_authority`: Full read access across all resources; permission to update incident/alert statuses.
+- `municipal_authority`: Full read access across all resources; permission to update incident/alert statuses.
+
+---
+
+### POST `/api/auth/login`
+Authenticate a dashboard user and receive a JWT access token.
+
 - **Auth Required:** No
 - **Request Body:**
 ```json
@@ -28,39 +44,71 @@ The backend uses JWT Bearer tokens for authentication.
   "password": "adminpassword"
 }
 ```
-*Note: Demo credentials are for development only.*
-- **Response:**
+*Demo Credentials:*
+- `admin` / `adminpassword` (`admin`)
+- `traffic` / `trafficpassword` (`traffic_authority`)
+- `municipal` / `municipalpassword` (`municipal_authority`)
+
+- **Success Response (200 OK):**
 ```json
 {
-  "access_token": "eyJhb...",
-  "token_type": "bearer",
+  "accessToken": "eyJhbGciOiJIUzI1Ni...",
+  "tokenType": "bearer",
   "user": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "username": "admin",
     "role": "admin"
   }
 }
 ```
+- **Error Response (401 Unauthorized):**
+```json
+{
+  "detail": "Incorrect username or password"
+}
+```
 
 ---
 
-## Status & Health
+### GET `/api/auth/me`
+Retrieve the authenticated user's profile using their JWT token.
 
-### Health Check
-- **Method:** GET
-- **Path:** `/health`
+- **Auth Required:** Yes (Any valid JWT)
+- **Success Response (200 OK):**
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "username": "admin",
+  "role": "admin"
+}
+```
+- **Error Response (401 Unauthorized):**
+```json
+{
+  "detail": "Could not validate credentials"
+}
+```
+
+---
+
+## 3. System Status & Health
+
+### GET `/health`
+Simple health check endpoint.
+
 - **Auth Required:** No
-- **Response:**
+- **Response (200 OK):**
 ```json
 {
   "status": "ok"
 }
 ```
 
-### Backend Status
-- **Method:** GET
-- **Path:** `/api/status`
-- **Auth Required:** Yes
-- **Response:**
+### GET `/api/status`
+Backend service operational check.
+
+- **Auth Required:** Yes (Any role)
+- **Response (200 OK):**
 ```json
 {
   "status": "ok",
@@ -71,50 +119,58 @@ The backend uses JWT Bearer tokens for authentication.
 
 ---
 
-## Dashboard Overview
+## 4. Dashboard Overview
 
-### Get Overview
-- **Method:** GET
-- **Path:** `/api/dashboard/overview`
-- **Auth Required:** Yes
-- **Response:**
-Aggregates summary stats, recent incidents (up to 10), and recent alerts (up to 10).
+### GET `/api/dashboard/overview`
+Aggregates summary statistics, recent incidents (top 10), and recent alerts (top 10) for initial dashboard render.
+
+- **Auth Required:** Yes (Any role)
+- **Response (200 OK):**
 ```json
 {
   "summary": {
     "totalIncidents": 150,
-    "resolvedIncidents": 100,
     "openIncidents": 50,
-    "totalAlerts": 10,
-    "activeAlerts": 5
+    "acknowledgedIncidents": 30,
+    "resolvedIncidents": 70,
+    "highSeverityIncidents": 40,
+    "mediumSeverityIncidents": 60,
+    "lowSeverityIncidents": 50,
+    "totalAlerts": 25,
+    "unreadAlerts": 10,
+    "acknowledgedAlerts": 5,
+    "resolvedAlerts": 10
   },
   "recentIncidents": [
     {
-      "id": "uuid",
-      "eventId": "uuid",
-      "incidentType": "pothole",
+      "id": "INC_101",
+      "eventId": "EVT_101",
+      "incidentType": "POTHOLE",
       "severity": "high",
       "confidence": 0.95,
       "timestamp": "2026-09-04T12:00:00Z",
       "location": {
-        "latitude": 34.05,
-        "longitude": -118.25,
-        "accuracyMeters": 10
+        "latitude": 17.385044,
+        "longitude": 78.486671,
+        "accuracyMeters": 5.0
       },
-      "recordingId": "uuid",
+      "recordingId": "REC_001",
       "status": "open",
-      "description": "Deep pothole reported"
+      "description": null,
+      "deviceId": "DEV_001",
+      "busId": "BUS_101",
+      "routeId": "ROUTE_1"
     }
   ],
   "recentAlerts": [
     {
-      "id": "uuid",
-      "incidentId": "uuid",
-      "alertType": "severe_hazard",
+      "id": "ALT_101",
+      "incidentId": "INC_101",
+      "alertType": "high_severity",
       "severity": "high",
-      "message": "High severity pothole detected.",
-      "isRead": false,
-      "timestamp": "2026-09-04T12:00:00Z"
+      "message": "High severity POTHOLE detected.",
+      "status": "unread",
+      "createdAt": "2026-09-04T12:00:01Z"
     }
   ]
 }
@@ -122,547 +178,516 @@ Aggregates summary stats, recent incidents (up to 10), and recent alerts (up to 
 
 ---
 
-## Incidents
+## 5. Incidents
 
-### List Incidents
-- **Method:** GET
-- **Path:** `/api/incidents`
-- **Auth Required:** Yes
+### GET `/api/incidents`
+Retrieve a paginated list of incidents with optional filters.
+
+- **Auth Required:** Yes (Any role)
 - **Query Parameters:**
-  - `incidentType` (optional)
-  - `severity` (optional)
-  - `status` (optional)
-  - `from` (optional datetime)
-  - `to` (optional datetime)
-  - `limit` (default: 100, max: 1000)
-  - `skip` (default: 0)
-- **Response:**
-```json
-{
-  "items": [ /* array of Incident objects */ ],
-  "total": 50,
-  "page": 1,
-  "pageSize": 100
-}
-```
+  - `page` (integer, default: 1)
+  - `pageSize` (integer, default: 20, max: 100)
+  - `incidentType` (optional string, e.g. `POTHOLE`, `ROAD_DAMAGE`, `WATERLOGGING`)
+  - `severity` (optional string: `high`, `medium`, `low`)
+  - `status` (optional string: `open`, `acknowledged`, `resolved`)
+  - `from` (optional ISO datetime)
+  - `to` (optional ISO datetime)
+  - `deviceId` (optional string)
+  - `busId` (optional string UUID)
+  - `routeId` (optional string UUID)
 
-### Get Incident by ID
-- **Method:** GET
-- **Path:** `/api/incidents/{id}`
-- **Auth Required:** Yes
-- **Response:**
-```json
-{
-  "id": "uuid",
-  "eventId": "uuid",
-  "incidentType": "pothole",
-  "severity": "high",
-  "confidence": 0.95,
-  "timestamp": "2026-09-04T12:00:00Z",
-  "location": {
-    "latitude": 34.05,
-    "longitude": -118.25,
-    "accuracyMeters": 10
-  },
-  "recordingId": "uuid",
-  "status": "open",
-  "description": "Deep pothole reported"
-}
-```
-
-### Update Incident Status
-- **Method:** PATCH
-- **Path:** `/api/incidents/{id}`
-- **Auth Required:** Yes
-- **Request Body:**
-```json
-{
-  "status": "acknowledged",
-  "description": "Repair crew dispatched"
-}
-```
-- **Response:** Updated Incident object.
-
----
-
-## Alerts
-
-### List Alerts
-- **Method:** GET
-- **Path:** `/api/alerts`
-- **Auth Required:** Yes
-- **Query Parameters:**
-  - `isRead` (optional boolean)
-  - `severity` (optional string)
-  - `limit` (default: 100)
-  - `skip` (default: 0)
-- **Response:**
+- **Response (200 OK):**
 ```json
 {
   "items": [
     {
-      "id": "uuid",
-      "incidentId": "uuid",
-      "alertType": "severe_hazard",
+      "id": "INC_101",
+      "eventId": "EVT_101",
+      "incidentType": "POTHOLE",
       "severity": "high",
-      "message": "High severity pothole detected.",
-      "isRead": false,
-      "timestamp": "2026-09-04T12:00:00Z"
+      "confidence": 0.95,
+      "timestamp": "2026-09-04T12:00:00Z",
+      "location": {
+        "latitude": 17.385044,
+        "longitude": 78.486671,
+        "accuracyMeters": 5.0
+      },
+      "recordingId": "REC_001",
+      "status": "open",
+      "description": null,
+      "deviceId": "DEV_001",
+      "busId": "BUS_101",
+      "routeId": "ROUTE_1"
     }
   ],
-  "total": 10,
+  "total": 1,
   "page": 1,
-  "pageSize": 100
+  "pageSize": 20,
+  "totalPages": 1
 }
 ```
 
-### Update Alert (Mark as Read)
-- **Method:** PATCH
-- **Path:** `/api/alerts/{id}`
-- **Auth Required:** Yes
+---
+
+### GET `/api/incidents/{id}`
+Retrieve details for a specific incident by ID.
+
+- **Auth Required:** Yes (Any role)
+- **Response (200 OK):** `IncidentResponse` object.
+- **Error (404 Not Found):** `{"detail": "Incident not found"}`
+
+---
+
+### PATCH `/api/incidents/{id}`
+Update an incident's status and/or description.
+
+- **Auth Required:** Yes (Any role)
+- **Status Workflow Transitions:**
+  - `open` → `acknowledged` or `resolved`
+  - `acknowledged` → `resolved`
+  - Invalid transitions return `409 Conflict`.
 - **Request Body:**
 ```json
 {
-  "isRead": true
+  "status": "acknowledged",
+  "description": "Inspection team dispatched to site."
 }
 ```
-- **Response:** Updated Alert object.
+- **Response (200 OK):** Updated `IncidentResponse` object.
+- **Error (409 Conflict):** `{"detail": "Invalid incident status transition"}`
 
 ---
 
-## Analytics
+### GET `/api/incidents/{id}/evidence`
+Retrieve evidence (recording metadata) linked to an incident.
 
-### Get Summary
-- **Method:** GET
-- **Path:** `/api/analytics/summary`
-- **Auth Required:** Yes
-- **Response:**
+- **Auth Required:** Yes (Any role)
+- **Response (200 OK):**
 ```json
 {
-  "totalIncidents": 150,
-  "resolvedIncidents": 100,
-  "openIncidents": 50,
-  "totalAlerts": 10,
-  "activeAlerts": 5
-}
-```
-
-### Incidents by Type
-- **Method:** GET
-- **Path:** `/api/analytics/incidents-by-type`
-- **Auth Required:** Yes
-- **Response:**
-```json
-{
-  "pothole": 120,
-  "traffic_light_out": 30
-}
-```
-
-### Incidents by Severity
-- **Method:** GET
-- **Path:** `/api/analytics/incidents-by-severity`
-- **Auth Required:** Yes
-- **Response:**
-```json
-{
-  "high": 40,
-  "medium": 80,
-  "low": 30
-}
-```
-
-### Alerts by Status
-- **Method:** GET
-- **Path:** `/api/analytics/alerts-by-status`
-- **Auth Required:** Yes
-- **Response:**
-```json
-{
-  "read": 8,
-  "unread": 2
-}
-```
-
----
-
-## Map
-
-### Map Incidents
-- **Method:** GET
-- **Path:** `/api/map/incidents`
-- **Auth Required:** Yes
-- **Query Parameters:**
-  - `minLat`, `maxLat`, `minLng`, `maxLng` (required)
-- **Response:**
-```json
-[
-  {
-    "id": "uuid",
-    "incidentType": "pothole",
-    "severity": "high",
-    "status": "open",
-    "location": {
-      "latitude": 34.05,
-      "longitude": -118.25,
-      "accuracyMeters": 10
-    }
-  }
-]
-```
-
-### Heatmap
-- **Method:** GET
-- **Path:** `/api/map/heatmap`
-- **Auth Required:** Yes
-- **Query Parameters:**
-  - `minLat`, `maxLat`, `minLng`, `maxLng` (required)
-- **Response:**
-```json
-[
-  {
-    "latitude": 34.05,
-    "longitude": -118.25,
-    "weight": 3
-  }
-]
-```
-
----
-
-## Real-time (WebSockets)
-
-REST handles initial and historical state. WebSockets handle live updates.
-**Frontend Sequence:**
-1. Login via `/api/auth/login`.
-2. Store `accessToken`.
-3. Load initial dashboard state via REST endpoints (e.g. `/api/dashboard/overview`).
-4. Connect to WebSocket.
-5. Apply live incoming messages to update the frontend state.
-
-### Connect
-- **Path:** `ws://<backend_url>/ws/events`
-
-### Message Protocol
-Messages sent from the backend are stringified JSON objects matching this shape:
-
-```json
-{
-  "type": "<message_type>",
-  "data": { ... }
-}
-```
-
-### Message Types
-- `incident.created`
-- `incident.updated`
-- `alert.created`
-- `alert.updated`
-
-**Example: Incident Created**
-```json
-{
-  "type": "incident.created",
-  "data": {
-    "id": "uuid",
-    "eventId": "uuid",
-    "incidentType": "pothole",
-    "severity": "high",
-    "confidence": 0.95,
-    "timestamp": "2026-09-04T12:00:00Z",
-    "location": {
-      "latitude": 34.05,
-      "longitude": -118.25,
-      "accuracyMeters": 10
-    },
-    "recordingId": "uuid",
-    "status": "open",
-    "description": null
-  }
-}
-```
-
----
-
-## Fleet Registry (Step 15)
-
-**Base path:** `/api/registry`
-
-**Read Access:** `admin`, `traffic_authority`, `municipal_authority`
-**Write Access:** `admin` only
-
-### Routes
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/registry/routes` | List all routes |
-| `GET` | `/api/registry/routes/{id}` | Get a single route |
-| `POST` | `/api/registry/routes` | Create a route (admin) |
-| `PATCH` | `/api/registry/routes/{id}` | Update a route (admin) |
-
-**Route object:**
-```json
-{
-  "id": "uuid",
-  "routeNumber": "101",
-  "name": "Downtown Express",
-  "origin": "North Station",
-  "destination": "South Station",
-  "isActive": true,
-  "createdAt": "2026-09-04T10:00:00Z",
-  "updatedAt": "2026-09-04T10:00:00Z"
-}
-```
-
-### Buses
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/registry/buses` | List all buses |
-| `GET` | `/api/registry/buses/{id}` | Get a single bus |
-| `POST` | `/api/registry/buses` | Create a bus (admin) |
-| `PATCH` | `/api/registry/buses/{id}` | Update a bus (admin) |
-
-**Bus object:**
-```json
-{
-  "id": "uuid",
-  "busNumber": "B100",
-  "registrationNumber": "KA-01-1234",
-  "operator": "City Transit",
-  "routeId": "uuid or null",
-  "isActive": true,
-  "createdAt": "2026-09-04T10:00:00Z",
-  "updatedAt": "2026-09-04T10:00:00Z"
-}
-```
-
-### Devices
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/registry/devices` | List all devices |
-| `GET` | `/api/registry/devices/{id}` | Get a single device |
-| `POST` | `/api/registry/devices` | Create a device (admin) |
-| `PATCH` | `/api/registry/devices/{id}` | Update a device (admin) |
-
-**Device object:**
-```json
-{
-  "id": "uuid",
-  "deviceIdentifier": "DEV-001",
-  "name": "Front Camera",
-  "deviceType": "camera",
-  "busId": "uuid or null",
-  "isActive": true,
-  "createdAt": "2026-09-04T10:00:00Z",
-  "updatedAt": "2026-09-04T10:00:00Z"
-}
-```
-
-**Common error codes for Registry:**
-- `409 Conflict` — Duplicate unique field (routeNumber, busNumber, registrationNumber, deviceIdentifier)
-- `404 Not Found` — Referenced FK (routeId / busId) does not exist
-- `403 Forbidden` — Non-admin role attempting a write operation
-
----
-
-## Step 16: Fleet Identity in Events and Incidents
-
-### Optional deviceId in POST /api/events
-
-The deviceId field is **optional** in the event payload.
-
-`json
-{
-  "events": [
-    {
-      "eventId": "EVT_001",
-      "eventType": "POTHOLE",
-      "confidence": 0.91,
-      "timestamp": "2026-09-04T13:05:22Z",
-      "deviceId": "ANDROID-BUS-101",
-      "location": { "latitude": 17.385, "longitude": 78.486, "accuracyMeters": 5.2 }
-    }
-  ]
-}
-`
-
-- If deviceId is **omitted**: event is processed normally, identity fields = null.
-- If deviceId is **present**: backend resolves Device ? Bus ? Route from the registry.
-- Unknown or inactive deviceId returns an error entry in the batch response (not HTTP error).
-
-### AcceptedEvent response now includes identity fields:
-
-`json
-{
-  "eventId": "EVT_001",
-  "status": "created",
-  "incidentId": "...",
-  "deviceId": "ANDROID-BUS-101",
-  "busId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "routeId": "7bc9f321-..."
-}
-`
-
-### IncidentResponse now includes nullable identity fields:
-
-`json
-{
-  "id": "...",
-  "eventId": "EVT_001",
-  "incidentType": "pothole",
-  "severity": "high",
-  "confidence": 0.91,
-  "timestamp": "2026-09-04T13:05:22Z",
-  "location": { "latitude": 17.385, "longitude": 78.486, "accuracyMeters": 5.2 },
-  "recordingId": "REC_001",
-  "status": "open",
-  "deviceId": "ANDROID-BUS-101",
-  "busId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "routeId": "7bc9f321-..."
-}
-`
-
-### Fleet Filters on GET /api/incidents
-
-| Query Param | Description |
-|-------------|-------------|
-| deviceId  | Filter incidents by device identifier |
-| usId     | Filter incidents by bus UUID |
-| outeId   | Filter incidents by route UUID |
-
-All fleet filters combine with existing incidentType, severity, status, rom, 	o filters.
-
-### Fleet Filters on GET /api/map/incidents
-
-Same deviceId, usId, outeId params available on the map endpoint.
-Map incident objects also expose deviceId, usId, outeId (nullable).
-
-### WebSocket (incident.created / incident.updated)
-
-The incident.created and incident.updated WebSocket messages now include fleet identity in the data payload (all nullable), since the payload is serialized from IncidentResponse.
-
-### Not yet implemented
-
-- Device authentication (API keys / certificates)
-- Auto-provisioning of devices
-- Fleet-filtered analytics
-
----
-
-## Step 17: Evidence & Recording Management
-
-**Base path:** `/api/recordings`
-
-**Read Access:** `admin`, `traffic_authority`, `municipal_authority`
-**Write Access:** `admin` only
-
-### Recordings
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/recordings` | List all recordings |
-| `GET` | `/api/recordings/{id}` | Get a single recording |
-| `POST` | `/api/recordings` | Create a recording metadata entry (admin) |
-| `PATCH` | `/api/recordings/{id}` | Update recording metadata (admin) |
-| `GET` | `/api/recordings/{id}/incidents` | List incidents linked to a specific recording |
-
-**Recording object:**
-```json
-{
-  "id": "uuid",
-  "recordingId": "REC_001",
-  "deviceId": "DEV-001",
-  "busId": "uuid or null",
-  "routeId": "uuid or null",
-  "startTime": "2026-09-04T12:00:00Z",
-  "endTime": "2026-09-04T12:02:00Z",
-  "durationSeconds": 120,
-  "fileSizeBytes": 10485760,
-  "filePath": "/recordings/REC_001.mp4",
-  "status": "available",
-  "createdAt": "2026-09-04T12:02:05Z",
-  "updatedAt": "2026-09-04T12:02:05Z"
-}
-```
-
-### Incident Evidence
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/incidents/{incident_id}/evidence` | Get evidence metadata for a specific incident |
-
-**Incident Evidence Response:**
-```json
-{
-  "incidentId": "uuid",
+  "incidentId": "INC_101",
   "recordingId": "REC_001",
   "hasRecording": true,
   "recordingMetadata": {
-    "id": "uuid",
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "recordingId": "REC_001",
     "status": "available",
     "startTime": "2026-09-04T12:00:00Z",
     "endTime": "2026-09-04T12:02:00Z",
     "durationSeconds": 120,
     "fileSizeBytes": 10485760,
-    "filePath": "/recordings/REC_001.mp4",
-    "deviceId": "DEV-001",
-    "busId": "uuid or null",
-    "routeId": "uuid or null"
+    "filePath": "/storage/recordings/REC_001.mp4",
+    "deviceId": "DEV_001",
+    "busId": "BUS_101",
+    "routeId": "ROUTE_1"
+  }
+}
+```
+*Note:* If `hasRecording` is `false`, `recordingMetadata` is `null`. Note also that `filePath` (or video URL) may be `null` if not uploaded.
+
+---
+
+## 6. Alerts
+
+### GET `/api/alerts`
+Retrieve a paginated list of system alerts.
+
+- **Auth Required:** Yes (Any role)
+- **Query Parameters:**
+  - `page` (integer, default: 1)
+  - `pageSize` (integer, default: 20, max: 100)
+  - `status` (optional string: `unread`, `acknowledged`, `resolved`)
+  - `severity` (optional string: `high`, `medium`, `low`)
+  - `alertType` (optional string: `high_severity`, `road_damage`, `waterlogging`, etc.)
+
+- **Response (200 OK):**
+```json
+{
+  "items": [
+    {
+      "id": "ALT_101",
+      "incidentId": "INC_101",
+      "alertType": "high_severity",
+      "severity": "high",
+      "message": "High severity POTHOLE detected.",
+      "status": "unread",
+      "createdAt": "2026-09-04T12:00:01Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "pageSize": 20,
+  "totalPages": 1
+}
+```
+
+---
+
+### PATCH `/api/alerts/{id}`
+Update an alert's status.
+
+- **Auth Required:** Yes (Any role)
+- **Status Workflow Transitions:**
+  - `unread` → `acknowledged` or `resolved`
+  - `acknowledged` → `resolved`
+- **Request Body:**
+```json
+{
+  "status": "acknowledged"
+}
+```
+- **Response (200 OK):** Updated `AlertResponse` object.
+- **Error (409 Conflict):** `{"detail": "Invalid alert status transition"}`
+
+---
+
+## 7. Analytics
+
+### GET `/api/analytics/summary`
+Get aggregated count statistics.
+
+- **Auth Required:** Yes (Any role)
+- **Query Parameters:** `from` (optional datetime), `to` (optional datetime)
+- **Response (200 OK):**
+```json
+{
+  "totalIncidents": 150,
+  "openIncidents": 50,
+  "acknowledgedIncidents": 30,
+  "resolvedIncidents": 70,
+  "highSeverityIncidents": 40,
+  "mediumSeverityIncidents": 60,
+  "lowSeverityIncidents": 50,
+  "totalAlerts": 25,
+  "unreadAlerts": 10,
+  "acknowledgedAlerts": 5,
+  "resolvedAlerts": 10
+}
+```
+
+---
+
+### GET `/api/analytics/incidents-by-type`
+Get incident counts grouped by type (sorted descending by count).
+
+- **Auth Required:** Yes (Any role)
+- **Query Parameters:** `from` (optional), `to` (optional)
+- **Response (200 OK):**
+```json
+{
+  "items": [
+    { "incidentType": "POTHOLE", "count": 90 },
+    { "incidentType": "ROAD_DAMAGE", "count": 40 },
+    { "incidentType": "WATERLOGGING", "count": 20 }
+  ]
+}
+```
+
+---
+
+### GET `/api/analytics/incidents-by-severity`
+Get incident counts grouped by severity.
+
+- **Auth Required:** Yes (Any role)
+- **Query Parameters:** `from` (optional), `to` (optional)
+- **Response (200 OK):**
+```json
+{
+  "items": [
+    { "severity": "high", "count": 40 },
+    { "severity": "medium", "count": 60 },
+    { "severity": "low", "count": 50 }
+  ]
+}
+```
+
+---
+
+### GET `/api/analytics/alerts-by-status`
+Get alert counts grouped by status.
+
+- **Auth Required:** Yes (Any role)
+- **Query Parameters:** `from` (optional), `to` (optional)
+- **Response (200 OK):**
+```json
+{
+  "items": [
+    { "status": "unread", "count": 10 },
+    { "status": "acknowledged", "count": 5 },
+    { "status": "resolved", "count": 10 }
+  ]
+}
+```
+
+---
+
+## 8. Map APIs (Leaflet Ready)
+
+### GET `/api/map/incidents`
+Fetch incidents located within a geographic bounding box for rendering map markers.
+
+- **Auth Required:** Yes (Any role)
+- **Query Parameters (Required Bounding Box):**
+  - `minLatitude` (float: -90 to 90)
+  - `maxLatitude` (float: -90 to 90)
+  - `minLongitude` (float: -180 to 180)
+  - `maxLongitude` (float: -180 to 180)
+- **Optional Filters:**
+  - `incidentType`, `severity`, `status`, `from`, `to`, `deviceId`, `busId`, `routeId`, `limit` (default: 1000, max: 2000)
+
+- **Response (200 OK):**
+```json
+{
+  "items": [
+    {
+      "id": "INC_101",
+      "incidentType": "POTHOLE",
+      "severity": "high",
+      "confidence": 0.95,
+      "timestamp": "2026-09-04T12:00:00Z",
+      "location": {
+        "latitude": 17.385044,
+        "longitude": 78.486671,
+        "accuracyMeters": 5.0
+      },
+      "status": "open",
+      "deviceId": "DEV_001",
+      "busId": "BUS_101",
+      "routeId": "ROUTE_1"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### GET `/api/map/heatmap`
+Fetch weighted point coordinates within a bounding box for rendering Leaflet heatmap overlays.
+
+- **Auth Required:** Yes (Any role)
+- **Query Parameters:** `minLatitude`, `maxLatitude`, `minLongitude`, `maxLongitude`, `incidentType`, `severity`, `status`, `from`, `to`, `limit` (default: 5000)
+- **Response (200 OK):**
+```json
+{
+  "items": [
+    {
+      "latitude": 17.385044,
+      "longitude": 78.486671,
+      "weight": 1
+    }
+  ]
+}
+```
+
+---
+
+## 9. Fleet Registry
+
+**Read Permissions:** `admin`, `traffic_authority`, `municipal_authority`  
+**Write Permissions:** `admin` only
+
+### Routes Endpoints
+- `GET /api/registry/routes`
+- `GET /api/registry/routes/{id}`
+- `POST /api/registry/routes`
+- `PATCH /api/registry/routes/{id}`
+
+**Route Schema Example:**
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "routeNumber": "101",
+  "name": "Secunderabad - Gachibowli",
+  "origin": "Secunderabad Station",
+  "destination": "Gachibowli DLF",
+  "isActive": true,
+  "createdAt": "2026-09-04T10:00:00Z",
+  "updatedAt": "2026-09-04T10:00:00Z"
+}
+```
+
+---
+
+### Buses Endpoints
+- `GET /api/registry/buses`
+- `GET /api/registry/buses/{id}`
+- `POST /api/registry/buses`
+- `PATCH /api/registry/buses/{id}`
+
+**Bus Schema Example:**
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "busNumber": "TS-09-UA-1001",
+  "registrationNumber": "TS09UA1001",
+  "operator": "TSRTC",
+  "routeId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "isActive": true,
+  "createdAt": "2026-09-04T10:00:00Z",
+  "updatedAt": "2026-09-04T10:00:00Z"
+}
+```
+
+---
+
+### Devices & Credentials Endpoints
+- `GET /api/registry/devices`
+- `GET /api/registry/devices/{id}`
+- `POST /api/registry/devices`
+- `PATCH /api/registry/devices/{id}`
+- `POST /api/registry/devices/{id}/credentials` (Admin only — generates API key)
+
+**Device Schema Example:**
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "deviceIdentifier": "DEV_001",
+  "name": "Front Dashboard Camera 1",
+  "deviceType": "camera",
+  "busId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "isActive": true,
+  "createdAt": "2026-09-04T10:00:00Z",
+  "updatedAt": "2026-09-04T10:00:00Z",
+  "hasCredentials": true,
+  "lastSeenAt": "2026-09-04T12:00:00Z"
+}
+```
+
+**Credentials Response:**
+```json
+{
+  "deviceId": "DEV_001",
+  "apiKey": "uip_dev_a1b2c3d4e5..."
+}
+```
+
+---
+
+## 10. Recordings
+
+- `GET /api/recordings` (Params: `page`, `pageSize`, `deviceId`, `busId`, `status`)
+- `GET /api/recordings/{id}`
+- `GET /api/recordings/{id}/incidents` (Params: `page`, `pageSize`)
+- `POST /api/recordings` (Requires Admin JWT or `X-Device-Key`)
+- `PATCH /api/recordings/{id}` (Admin only)
+
+**Recording Schema Example:**
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "recordingId": "REC_001",
+  "deviceId": "DEV_001",
+  "busId": "BUS_101",
+  "routeId": "ROUTE_1",
+  "startTime": "2026-09-04T12:00:00Z",
+  "endTime": "2026-09-04T12:02:00Z",
+  "durationSeconds": 120,
+  "fileSizeBytes": 10485760,
+  "filePath": "/storage/recordings/REC_001.mp4",
+  "status": "available",
+  "createdAt": "2026-09-04T12:02:05Z",
+  "updatedAt": "2026-09-04T12:02:05Z"
+}
+```
+
+---
+
+## 11. Real-Time WebSockets (`/ws/events`)
+
+The frontend loads initial historical data via REST, then establishes a single WebSocket connection for real-time state updates.
+
+- **WebSocket URL:** `ws://localhost:8000/ws/events`
+
+### Message Payload Protocol
+Every message pushed by the backend arrives as a JSON string with the following wrapper structure:
+
+```json
+{
+  "type": "<event_type>",
+  "data": { ... }
+}
+```
+
+### Event Types & Data Schemas
+
+#### 1. `incident.created` & `incident.updated`
+Data payload is a full camelCase `IncidentResponse` object.
+```json
+{
+  "type": "incident.created",
+  "data": {
+    "id": "INC_101",
+    "eventId": "EVT_101",
+    "incidentType": "POTHOLE",
+    "severity": "high",
+    "confidence": 0.95,
+    "timestamp": "2026-09-04T12:00:00Z",
+    "location": {
+      "latitude": 17.385044,
+      "longitude": 78.486671,
+      "accuracyMeters": 5.0
+    },
+    "recordingId": "REC_001",
+    "status": "open",
+    "description": null,
+    "deviceId": "DEV_001",
+    "busId": "BUS_101",
+    "routeId": "ROUTE_1"
   }
 }
 ```
 
-### WebSocket (recording.created / recording.updated)
-
-The `recording.created` and `recording.updated` WebSocket messages broadcast changes to recording metadata.
-
-**Example:**
+#### 2. `alert.created` & `alert.updated`
+Data payload is a full camelCase `AlertResponse` object.
 ```json
 {
-  "type": "recording.updated",
+  "type": "alert.created",
   "data": {
-    "id": "uuid",
+    "id": "ALT_101",
+    "incidentId": "INC_101",
+    "alertType": "high_severity",
+    "severity": "high",
+    "message": "High severity POTHOLE detected.",
+    "status": "unread",
+    "createdAt": "2026-09-04T12:00:01Z"
+  }
+}
+```
+
+#### 3. `recording.created` & `recording.updated`
+Data payload is a full camelCase `RecordingResponse` object.
+```json
+{
+  "type": "recording.created",
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "recordingId": "REC_001",
-    "status": "available",
-    ...
+    "deviceId": "DEV_001",
+    "busId": "BUS_101",
+    "routeId": "ROUTE_1",
+    "status": "uploading"
   }
 }
 ```
 
 ---
 
-## Step 18: Device Authentication
+## 12. Error Response Contract
 
-**Dual-Auth System:**
-- **Human Dashboard Users:** `Authorization: Bearer <JWT>`
-- **Android Sensing Devices:** `X-Device-Key: <api_key>`
+The backend uses standard HTTP status codes and FastAPI's error format:
 
-### Ingestion Endpoints (Dual-Auth)
-
-The following ingestion endpoints accept either `Authorization: Bearer <JWT>` (for admin testing) or `X-Device-Key: <api_key>` (for production Android devices):
-
-- `POST /api/events`
-- `POST /api/recordings`
-
-### Generating Credentials
-
-- **Method:** POST
-- **Path:** `/api/registry/devices/{id}/credentials`
-- **Auth Required:** Yes (Admin JWT)
-- **Response:**
 ```json
 {
-  "api_key": "uip_dev_...",
-  "message": "Store this key securely. It will not be shown again."
+  "detail": "Description of the error"
 }
 ```
 
-### Auth Status on Registry
-
-The `GET /api/registry/devices` and `GET /api/registry/devices/{id}` endpoints now include an `authStatus` field:
-- `unconfigured`: No API key generated.
-- `active`: API key generated.
-- `revoked`: (Future functionality).
+| HTTP Code | Error Condition |
+|-----------|-----------------|
+| `400 Bad Request` | Invalid parameters (e.g. `from` date after `to` date). |
+| `401 Unauthorized` | Missing, invalid, or expired JWT token or `X-Device-Key`. |
+| `403 Forbidden` | Authenticated user lacks required role (e.g. non-admin write). |
+| `404 Not Found` | Requested resource ID does not exist. |
+| `409 Conflict` | Business constraint violation (e.g. invalid status transition). |
+| `422 Unprocessable Entity` | Schema validation error or out-of-range map bounding box. |

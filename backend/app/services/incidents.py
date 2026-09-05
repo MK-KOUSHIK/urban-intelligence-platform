@@ -1,3 +1,4 @@
+import math
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import Optional, List
@@ -56,7 +57,8 @@ def get_incidents(
         items=items,
         total=total,
         page=page,
-        pageSize=page_size
+        pageSize=page_size,
+        totalPages=math.ceil(total / page_size) if page_size else 0
     )
 
 def get_incident_by_id(db: Session, incident_id: str) -> Optional[IncidentResponse]:

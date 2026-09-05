@@ -5,6 +5,8 @@ from app.models.users import User
 from app.schemas.auth import LoginRequest, TokenResponse, AuthenticatedUserResponse
 from app.auth.security import verify_password, create_access_token
 
+from app.auth.deps import get_current_user
+
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/login", response_model=TokenResponse)
@@ -47,3 +49,12 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             role=user.role
         )
     )
+
+@router.get("/me", response_model=AuthenticatedUserResponse)
+def get_current_user_info(current_user: User = Depends(get_current_user)):
+    return AuthenticatedUserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        role=current_user.role
+    )
+

@@ -283,7 +283,9 @@ def generate_device_credentials(db: Session, device_id: str) -> Tuple[str, str]:
     The plaintext key is NOT stored — only the bcrypt hash is persisted.
     Calling this invalidates any previously issued key.
     """
-    db_device = db.query(Device).filter(Device.id == device_id).first()
+    db_device = db.query(Device).filter(
+        (Device.id == device_id) | (Device.device_identifier == device_id)
+    ).first()
     if not db_device:
         raise HTTPException(status_code=404, detail="Device not found")
 

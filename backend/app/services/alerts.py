@@ -1,3 +1,4 @@
+import math
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import Optional
@@ -36,7 +37,8 @@ def get_alerts(
         items=items,
         total=total,
         page=page,
-        pageSize=page_size
+        pageSize=page_size,
+        totalPages=math.ceil(total / page_size) if page_size else 0
     )
 
 def validate_alert_status_transition(current: str, requested: str) -> bool:

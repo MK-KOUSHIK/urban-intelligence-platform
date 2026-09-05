@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Color Palette Design Tokens (Light / Navy Command Center) */
+    --color-primary: #0f172a;       /* Deep Navy */
+    --color-primary-hover: #1e293b;
+    --color-accent: #2563eb;        /* Operational Blue */
+    --color-accent-hover: #1d4ed8;
+
+    --color-background: #f8fafc;    /* Clean neutral background */
+    --color-surface: #ffffff;       /* Card / Modal surface */
+    --color-surface-hover: #f1f5f9;
+    --color-border: #e2e8f0;        /* Subtle divider */
+    --color-border-dark: #cbd5e1;
+
+    --color-text-primary: #0f172a;  /* High contrast readable text */
+    --color-text-secondary: #475569;
+    --color-text-muted: #94a3b8;
+
+    /* Status Colors */
+    --color-danger: #dc2626;        /* High / Critical (Red) */
+    --color-danger-bg: #fef2f2;
+    --color-danger-border: #fecaca;
+
+    --color-warning: #d97706;       /* Medium / Warning (Amber) */
+    --color-warning-bg: #fffbeb;
+    --color-warning-border: #fde68a;
+
+    --color-success: #16a34a;       /* Low / Resolved / Success (Green) */
+    --color-success-bg: #f0fdf4;
+    --color-success-border: #bbf7d0;
+
+    --color-info: #0284c7;          /* Info / Active (Blue) */
+    --color-info-bg: #f0f9ff;
+    --color-info-border: #bae6fd;
+  }
+
+  .dark {
+    /* Dark Command Center Palette */
+    --color-primary: #38bdf8;
+    --color-primary-hover: #7dd3fc;
+    --color-accent: #3b82f6;
+    --color-accent-hover: #60a5fa;
+
+    --color-background: #090d16;    /* Dark space navy background */
+    --color-surface: #111827;       /* Dark card surface */
+    --color-surface-hover: #1f2937;
+    --color-border: #1f2937;
+    --color-border-dark: #374151;
+
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #64748b;
+
+    --color-danger: #ef4444;
+    --color-danger-bg: #450a0a;
+    --color-danger-border: #7f1d1d;
+
+    --color-warning: #f59e0b;
+    --color-warning-bg: #451a03;
+    --color-warning-border: #78350f;
+
+    --color-success: #22c55e;
+    --color-success-bg: #052e16;
+    --color-success-border: #14532d;
+
+    --color-info: #38bdf8;
+    --color-info-bg: #0c4a6e;
+    --color-info-border: #0369a1;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+/* Custom Scrollbar for Operations Dashboard */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-dark);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}

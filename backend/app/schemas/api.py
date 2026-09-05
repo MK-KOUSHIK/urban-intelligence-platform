@@ -53,6 +53,7 @@ class IncidentListResponse(BaseModel):
     total: int
     page: int
     pageSize: int
+    totalPages: int = 0
 
 class IncidentUpdateRequest(BaseModel):
     status: Optional[str] = None
@@ -78,6 +79,7 @@ class AlertListResponse(BaseModel):
     total: int
     page: int
     pageSize: int
+    totalPages: int = 0
 
 class AlertUpdateRequest(BaseModel):
     status: str
