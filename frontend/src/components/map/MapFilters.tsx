@@ -107,11 +107,18 @@ export const MapFilters: React.FC<MapFiltersProps> = ({
               className="w-full rounded border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-200 focus:border-blue-500 focus:outline-hidden"
             >
               <option value="">All Types</option>
+              <option value="POTHOLE">Pothole</option>
+              <option value="ROAD_DAMAGE">Road Damage</option>
+              <option value="WATERLOGGING">Waterlogging</option>
+              <option value="MISSING_SIGN">Missing Sign</option>
+              <option value="PEDESTRIAN">Pedestrian</option>
+              <option value="VEHICLE">Vehicle</option>
               <option value="ACCIDENT">Accident</option>
               <option value="HAZARD">Hazard</option>
               <option value="CONGESTION">Congestion</option>
               <option value="WEAPON_DETECTED">Weapon Detected</option>
               <option value="CAMERA_MALFUNCTION">Camera Malfunction</option>
+              <option value="OTHER">Other</option>
             </select>
           </div>
 

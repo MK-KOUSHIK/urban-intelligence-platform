@@ -79,6 +79,7 @@ export const AlertFilters: React.FC<AlertFiltersProps> = ({
               className="w-full rounded border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-200 focus:border-blue-500 focus:outline-hidden"
             >
               <option value="">All Alert Types</option>
+              <option value="high_severity">High Severity</option>
               <option value="CRITICAL_HAZARD">Critical Hazard</option>
               <option value="TRAFFIC_SPIKE">Traffic Spike</option>
               <option value="DEVICE_OFFLINE">Device Offline</option>
